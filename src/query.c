@@ -956,7 +956,7 @@ int QueryResult_Serialize(QueryResult *r, RedisSearchCtx *sctx, RSSearchRequest 
       if (rkey) {
         RedisModule_CloseKey(rkey);
       }
-      Document_Free(doc);
+      Document_Free(&doc);
     }
   }
 
