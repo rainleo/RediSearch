@@ -39,10 +39,13 @@ void VVW_Free(VarintVectorWriter *w) {
 
 VarintVectorWriter *NewVarintVectorWriter(size_t cap) {
   VarintVectorWriter *w = malloc(sizeof(VarintVectorWriter));
+  return w;
+}
+
+void VVW_Init(VarintVectorWriter *w, size_t cap) {
   w->lastValue = 0;
   w->nmemb = 0;
   Buffer_Init(&w->buf, cap);
-  return w;
 }
 
 /**
