@@ -32,7 +32,7 @@ void ConcurrentSearch_ReopenKeys(ConcurrentSearchCtx *ctx) {
 }
 
 /** Check the elapsed timer, and release the lock if enough time has passed */
-inline void ConcurrentSearch_CheckTimer(ConcurrentSearchCtx *ctx) {
+int ConcurrentSearch_CheckTimer(ConcurrentSearchCtx *ctx) {
   static struct timespec now;
   clock_gettime(CLOCK_MONOTONIC_RAW, &now);
 
@@ -54,7 +54,9 @@ inline void ConcurrentSearch_CheckTimer(ConcurrentSearchCtx *ctx) {
     // This will be used to calculate the elapsed running time
     clock_gettime(CLOCK_MONOTONIC_RAW, &ctx->lastTime);
     ctx->ticker = 0;
+    return 1;
   }
+  return 0;
 }
 
 /** Initialize a concurrent context */
@@ -71,7 +73,6 @@ void ConcurrentSearchCtx_Init(RedisModuleCtx *rctx, ConcurrentSearchCtx *ctx) {
 
 void ConcurrentSearchCtx_Free(ConcurrentSearchCtx *ctx) {
   for (size_t i = 0; i < ctx->numOpenKeys; i++) {
-    RedisModule_CloseKey(ctx->openKeys[i].key);
     RedisModule_FreeString(ctx->ctx, ctx->openKeys[i].keyName);
   }
   free(ctx->openKeys);
@@ -84,4 +85,14 @@ void ConcurrentSearch_AddKey(ConcurrentSearchCtx *ctx, RedisModuleKey *key, int 
   ctx->openKeys = realloc(ctx->openKeys, ctx->numOpenKeys * sizeof(ConcurrentKeyCtx));
   ctx->openKeys[ctx->numOpenKeys - 1] = (ConcurrentKeyCtx){
       .key = key, .keyName = keyName, .keyFlags = openFlags, .cb = cb, .ctx = privdata};
+}
+
+void ConcurrentSearchCtx_Lock(ConcurrentSearchCtx *ctx) {
+  RedisModule_ThreadSafeContextLock(ctx->ctx);
+  ConcurrentSearch_ReopenKeys(ctx);
+}
+
+void ConcurrentSearchCtx_Unlock(ConcurrentSearchCtx *ctx) {
+  ConcurrentSearch_CloseKeys(ctx);
+  RedisModule_ThreadSafeContextUnlock(ctx->ctx);
 }
